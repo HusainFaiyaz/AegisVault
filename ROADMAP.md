@@ -3,7 +3,8 @@
 ---
 
 ## Day 1: Monorepo Foundation, Docker Infra & Shared Zero-Trust Contracts
-- **Status:** `[ ] Pending`
+- **Status:** `[x] Completed`
+- **Completion Summary (2026-10-14):** Scaffolded the pnpm/Turborepo monorepo root (`package.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `.gitignore`, `.env.example`) and `docker-compose.yml` (MongoDB Atlas Local + Redis). Built `packages/shared` with Zod contracts (`EntityCategoryEnum`, `PlaceholderTokenRegex`, `RedactedEntitySchema`, `SanitizedDocumentUploadSchema`, `CitationChunkSchema`) and `detectRawPiiLeakage`/`hasRawPiiLeakage` in `pii-leakage.guard.ts`, covered by 17 Vitest unit tests (SSN/MRN/IBAN/credit card/email/phone detection, placeholder permissiveness, mixed-content cases). `pnpm install && pnpm turbo run typecheck && pnpm turbo run test` passes clean (2 tasks, 17/17 tests, 0 errors).
 - **Target Package:** Root + `packages/shared`
 - **Files to Create:**
   - `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `.gitignore`, `.env.example`

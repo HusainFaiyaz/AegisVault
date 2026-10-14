@@ -1,0 +1,22 @@
+services:
+  mongodb:
+    image: mongodb/mongodb-atlas-local:8.0
+    container_name: aegisvault-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - RUNNER_LOG_LEVEL=INFO
+
+  redis:
+    image: redis:7-alpine
+    container_name: aegisvault-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mongodb_data:
+  redis_data:
