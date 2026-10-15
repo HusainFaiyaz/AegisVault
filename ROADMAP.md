@@ -22,7 +22,8 @@
 ---
 
 ## Day 2: Deterministic HMAC Pseudonymizer & Sliding-Window SSE Re-Hydrator
-- **Status:** `[ ] Pending`
+- **Status:** `[x] Completed`
+- **Completion Summary (2026-10-15):** Scaffolded `apps/web` (`package.json`, `tsconfig.json`, `vite.config.ts` with embedded Vitest config). Built `src/lib/pseudonymizer.ts` with `generateSessionHmacKey()` (non-extractable Web Crypto `HMAC-SHA256` key) and `generateDeterministicToken(sessionKey, category, rawValue)`, which case/whitespace-normalizes the raw value before signing so identical entities always collapse to the same `[CATEGORY_HEX4]` token. Built `src/lib/stream-rehydrator.ts` with `createRehydrationTransformStream(entityLookupMap)`, a `TransformStream<string, StreamSegment>` that holds an internal lookahead buffer so a `[CATEGORY_HEX4]` placeholder split arbitrarily across SSE chunk boundaries (e.g. `["Patient ", "[PER", "_89", "A1]", " is stable"]`) is still re-hydrated into one structured `entity` segment, while non-token bracket content passes through as `text`. Covered by 6 Vitest tests in `src/lib/__tests__/stream-rehydrator.test.ts` (split-token boundary, multiple entities in one chunk, unresolved lookup, invalid bracket passthrough, never-closed bracket on flush, repeated-entity token stability). `pnpm --filter @aegis/web test && pnpm turbo run typecheck` plus the full `pnpm turbo run test` pass clean (3/3 tasks, 23/23 tests across the monorepo, 0 type errors).
 - **Target Package:** `apps/web` (Core Crypto & Stream Engine)
 - **Files to Create:**
   - `apps/web/package.json`, `apps/web/tsconfig.json`, `apps/web/vite.config.ts`
