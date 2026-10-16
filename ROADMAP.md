@@ -39,7 +39,8 @@
 ---
 
 ## Day 3: Web Crypto AES-GCM 256-Bit Local Vault & IndexedDB Engine
-- **Status:** `[ ] Pending`
+- **Status:** `[x] Completed`
+- **Completion Summary (2026-10-16):** Built `apps/web/src/lib/vault.ts`, an `idb`-backed IndexedDB wrapper (`aegis-vault` DB, `session-keys` + `redacted-entities` object stores with a `by-session` index) that generates a non-extractable `AES-GCM` 256-bit `CryptoKey` per session (stored directly as a structured-clone-able `CryptoKey` object, never exported/extracted), encrypts each `{ token, originalValue, category, confidence }` record with a unique random 12-byte IV before writing, and exposes `storeRedactedBatch()`, `getDecryptedSessionMap()`, and `purgeSessionVault()`. All `crypto.subtle` encryption work completes before an IndexedDB transaction opens, avoiding the async-auto-commit race. Built `apps/web/src/lib/audit-receipt.ts` with `generateAuditReceipt()`, which hashes only the non-sensitive fields of each entity (token/category/confidence, never `originalValue`) into SHA-256 digests and folds them into a Merkle root, plus `vault.ts`'s `exportCryptographicAuditProof()`, which decrypts a session and produces this zero-knowledge proof that local redaction occurred. Covered by 9 Vitest tests in `apps/web/src/lib/__tests__/vault.test.ts` (using `fake-indexeddb` + Node's native Web Crypto) proving round-trip decryption, that raw PII/tokens never appear as plaintext in the stored ciphertext bytes, unique-IV-per-entity, session isolation, vault purge, and that the exported audit proof's JSON never contains the original raw values. `pnpm --filter @aegis/web test && pnpm turbo run typecheck` plus the full `pnpm turbo run test` pass clean (3/3 tasks, 32/32 tests across the monorepo, 0 type errors).
 - **Target Package:** `apps/web` (Encrypted Persistence Layer)
 - **Files to Create:**
   - `apps/web/src/lib/vault.ts` (Web Crypto `AES-GCM` 256-bit key generation + `idb` IndexedDB wrapper)
