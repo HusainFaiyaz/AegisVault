@@ -14,6 +14,15 @@ export interface PiiLeakageFinding {
 const PLACEHOLDER_TOKEN_PATTERN =
   /\[(?:PER|ORG|LOC|SSN|MRN|IBAN|EMAIL|PHONE|CREDIT_CARD)_[0-9A-F]{4}\]/g;
 
+/**
+ * Matches a canonical 8-4-4-4-12 UUID. Document, chunk and job ids are UUIDs
+ * and travel in every API payload; their digit runs would otherwise match
+ * the PHONE or CREDIT_CARD patterns (~0.7% of random v4 UUIDs do), so they
+ * are blanked out the same way placeholders are.
+ */
+const UUID_PATTERN =
+  /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+
 const RAW_PII_PATTERNS: ReadonlyArray<{
   category: EntityCategory;
   pattern: RegExp;
@@ -31,14 +40,15 @@ const RAW_PII_PATTERNS: ReadonlyArray<{
 
 /**
  * Scans `text` for raw, unredacted PII. Legitimate `[CATEGORY_HEX4]`
- * placeholders are blanked out first so they can never trigger a false
- * positive. Returns every raw PII match found; an empty array means the
+ * placeholders and UUIDs are blanked out first so they can never trigger a
+ * false positive. Returns every raw PII match found; an empty array means the
  * text is safe to forward past the zero-trust boundary.
  */
 export function detectRawPiiLeakage(text: string): PiiLeakageFinding[] {
-  const sanitizedForScanning = text.replace(PLACEHOLDER_TOKEN_PATTERN, (m) =>
-    " ".repeat(m.length),
-  );
+  const blank = (m: string): string => " ".repeat(m.length);
+  const sanitizedForScanning = text
+    .replace(PLACEHOLDER_TOKEN_PATTERN, blank)
+    .replace(UUID_PATTERN, blank);
 
   const findings: PiiLeakageFinding[] = [];
 

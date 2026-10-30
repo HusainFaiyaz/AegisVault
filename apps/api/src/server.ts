@@ -1,6 +1,15 @@
+import { Redis } from "ioredis";
 import { createApp, createLogger } from "./app.js";
 import { loadEnv } from "./config/env.js";
 import { connectDb, disconnectDb, pingDb } from "./config/db.js";
+import {
+  createDocumentChunkStore,
+  ensureDocumentChunkIndexes,
+  getDocumentChunkCollection,
+} from "./models/document-chunk.model.js";
+import { createDocumentsRouter } from "./routes/documents.routes.js";
+import { createVoyageService } from "./services/voyage.service.js";
+import { createBullIngestionQueue, createIngestionWorker } from "./workers/ingestion.worker.js";
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -8,9 +17,31 @@ async function main(): Promise<void> {
   const env = loadEnv();
   const logger = createLogger(env);
 
-  await connectDb(env.MONGODB_URI, logger);
+  const db = await connectDb(env.MONGODB_URI, logger);
+  const chunks = getDocumentChunkCollection(db);
+  await ensureDocumentChunkIndexes(chunks);
 
-  const app = createApp({ env, logger, checkDb: pingDb });
+  // BullMQ workers require `maxRetriesPerRequest: null` on their connection.
+  const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+  const voyage = createVoyageService({ apiKey: env.VOYAGE_API_KEY });
+  logger.info({ voyageMode: voyage.mode, model: voyage.embeddingModel }, "voyage client ready");
+
+  const ingestionQueue = createBullIngestionQueue(redis);
+  const ingestionWorker = createIngestionWorker({
+    connection: redis,
+    deps: { voyage, chunkStore: createDocumentChunkStore(chunks) },
+    logger,
+    concurrency: env.INGESTION_CONCURRENCY,
+  });
+
+  const app = createApp({
+    env,
+    logger,
+    checkDb: pingDb,
+    registerApiRoutes: (api) => {
+      api.use(createDocumentsRouter({ queue: ingestionQueue }));
+    },
+  });
   const server = app.listen(env.PORT, (error?: Error) => {
     if (error) {
       logger.fatal({ err: error }, "failed to bind http server");
@@ -34,7 +65,13 @@ async function main(): Promise<void> {
     forceExit.unref();
 
     server.close(() => {
-      void disconnectDb().finally(() => process.exit(0));
+      // Let in-flight jobs finish before closing the connections they use.
+      void ingestionWorker
+        .close()
+        .then(() => ingestionQueue.close())
+        .then(() => redis.quit())
+        .then(() => disconnectDb())
+        .finally(() => process.exit(0));
     });
   };
 

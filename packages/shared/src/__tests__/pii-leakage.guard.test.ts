@@ -87,6 +87,18 @@ describe("detectRawPiiLeakage", () => {
     expect(categories).toEqual(["EMAIL", "PHONE", "SSN"]);
   });
 
+  it("does not mistake digit-heavy UUIDs for phone or card numbers", () => {
+    expect(detectRawPiiLeakage("12345678-1234-4123-8123-123456789012")).toEqual([]);
+    expect(detectRawPiiLeakage("documentId 41555501-3241-4111-9111-111111111111")).toEqual([]);
+  });
+
+  it("still catches raw PII next to a UUID", () => {
+    const findings = detectRawPiiLeakage(
+      "12345678-1234-4123-8123-123456789012 call 415-555-0199",
+    );
+    expect(findings.map((f) => f.category)).toEqual(["PHONE"]);
+  });
+
   it("hasRawPiiLeakage returns true when raw PII is present", () => {
     expect(hasRawPiiLeakage("SSN is 123-45-6789")).toBe(true);
   });

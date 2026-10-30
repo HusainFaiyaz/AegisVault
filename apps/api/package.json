@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@aegis/shared": "workspace:*",
+    "bullmq": "^5.65.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
+    "ioredis": "^5.8.0",
     "mongodb": "^7.0.0",
     "pino": "^10.0.0",
     "pino-http": "^11.0.0",

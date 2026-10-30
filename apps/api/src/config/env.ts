@@ -26,6 +26,8 @@ const EnvSchema = z.object({
   MONGODB_URI: z.string().url().default("mongodb://localhost:27017/aegisvault"),
   REDIS_URL: z.string().url().default("redis://localhost:6379"),
   VOYAGE_API_KEY: z.string().min(1).default("mock"),
+  /** Parallel ingestion jobs per worker process. */
+  INGESTION_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(2),
   AI_PROVIDER_API_KEY: z.string().default(""),
 });
 
