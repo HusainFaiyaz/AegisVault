@@ -24,6 +24,11 @@ export interface DocumentChunkDoc {
 
 export const DOCUMENT_CHUNKS_COLLECTION = "document_chunks";
 
+/** Atlas Vector Search index over `embedding` (created by `scripts/setup-indexes.ts`). */
+export const DOCUMENT_CHUNKS_VECTOR_INDEX = "document_chunks_vector";
+/** Atlas Search (BM25) index over `sanitizedContent` / `sectionTitle` / `placeholderTokens`. */
+export const DOCUMENT_CHUNKS_SEARCH_INDEX = "document_chunks_text";
+
 export function getDocumentChunkCollection(db: Db): Collection<DocumentChunkDoc> {
   return db.collection<DocumentChunkDoc>(DOCUMENT_CHUNKS_COLLECTION);
 }
