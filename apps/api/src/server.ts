@@ -7,7 +7,11 @@ import {
   ensureDocumentChunkIndexes,
   getDocumentChunkCollection,
 } from "./models/document-chunk.model.js";
+import { createRedisTokenBucketStore, rateLimit } from "./middleware/rate-limit.middleware.js";
+import { createChatRouter } from "./routes/chat.routes.js";
 import { createDocumentsRouter } from "./routes/documents.routes.js";
+import { createChatModel } from "./services/llm.service.js";
+import { createCollectionAggregator, createRetrievalService } from "./services/retrieval.service.js";
 import { createVoyageService } from "./services/voyage.service.js";
 import { createBullIngestionQueue, createIngestionWorker } from "./workers/ingestion.worker.js";
 
@@ -34,12 +38,36 @@ async function main(): Promise<void> {
     concurrency: env.INGESTION_CONCURRENCY,
   });
 
+  const retrieval = createRetrievalService({ aggregator: createCollectionAggregator(chunks), voyage });
+  const chatModel = createChatModel({ apiKey: env.AI_PROVIDER_API_KEY, modelId: env.AI_MODEL });
+  logger.info({ llmMode: chatModel.mode, model: chatModel.modelId }, "chat model ready");
+
+  // Separate connection that fails fast: a Redis outage must not stall chat
+  // requests behind BullMQ's infinite-retry connection settings.
+  const rateLimitRedis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
+  rateLimitRedis.on("error", (err) => logger.warn({ errName: err.name }, "rate-limit redis error"));
+  const chatRateLimiter = rateLimit({
+    name: "chat",
+    store: createRedisTokenBucketStore(rateLimitRedis),
+    capacity: env.CHAT_RATE_LIMIT_CAPACITY,
+    refillPerSecond: env.CHAT_RATE_LIMIT_REFILL_PER_MINUTE / 60,
+  });
+
   const app = createApp({
     env,
     logger,
     checkDb: pingDb,
     registerApiRoutes: (api) => {
       api.use(createDocumentsRouter({ queue: ingestionQueue }));
+      api.use(
+        createChatRouter({
+          retrieval,
+          model: chatModel.model,
+          modelId: chatModel.modelId,
+          rateLimiter: chatRateLimiter,
+          maxOutputTokens: env.CHAT_MAX_OUTPUT_TOKENS,
+        }),
+      );
     },
   });
   const server = app.listen(env.PORT, (error?: Error) => {
@@ -69,6 +97,7 @@ async function main(): Promise<void> {
       void ingestionWorker
         .close()
         .then(() => ingestionQueue.close())
+        .then(() => rateLimitRedis.quit())
         .then(() => redis.quit())
         .then(() => disconnectDb())
         .finally(() => process.exit(0));
