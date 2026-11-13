@@ -7,6 +7,13 @@ import {
   type NerTokenPrediction,
   type ScrubResult,
 } from "./scrubber-span-merger.js";
+import {
+  ASR_MODEL_ID,
+  asrDtypeFor,
+  NER_MODEL_ID,
+  nerDtypeFor,
+  type InferenceDevice,
+} from "./model-config.js";
 
 /**
  * Browser-edge PII scrubber. Runs Transformers.js entirely inside this Web
@@ -16,10 +23,7 @@ import {
  * the token → original-value entities it writes to the encrypted vault.
  */
 
-const NER_MODEL_ID = "Xenova/bert-base-NER";
-const ASR_MODEL_ID = "onnx-community/whisper-tiny.en";
-
-export type InferenceDevice = "webgpu" | "wasm";
+export type { InferenceDevice };
 
 export type ScrubberRequest =
   | { type: "init"; sessionKey: CryptoKey }
@@ -126,7 +130,7 @@ function getNerPipeline(): Promise<NerPipeline> {
     async (target) =>
       (await pipeline("token-classification", NER_MODEL_ID, {
         device: target,
-        dtype: target === "webgpu" ? "fp32" : "q8",
+        dtype: nerDtypeFor(target),
         progress_callback: reportProgress(NER_MODEL_ID),
       })) as unknown as NerPipeline,
   );
@@ -138,10 +142,7 @@ function getAsrPipeline(): Promise<AsrPipeline> {
     async (target) =>
       (await pipeline("automatic-speech-recognition", ASR_MODEL_ID, {
         device: target,
-        dtype:
-          target === "webgpu"
-            ? { encoder_model: "fp32", decoder_model_merged: "q4" }
-            : "q8",
+        dtype: asrDtypeFor(target),
         progress_callback: reportProgress(ASR_MODEL_ID),
       })) as unknown as AsrPipeline,
   );

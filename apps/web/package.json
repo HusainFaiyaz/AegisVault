@@ -12,12 +12,24 @@
   "dependencies": {
     "@aegis/shared": "workspace:*",
     "@huggingface/transformers": "^3.8.1",
+    "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-router": "^1.170.46",
+    "clsx": "^2.1.1",
     "idb": "^8.0.4",
-    "react": "^19.3.1"
+    "lucide-react": "^1.72.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^3.25.76",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
     "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
     "fake-indexeddb": "^6.2.5",
+    "tailwindcss": "^4.3.5",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "vitest": "^2.1.8"
